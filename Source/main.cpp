@@ -1,16 +1,20 @@
 #include <iostream>
+#include <chrono>
+#include <string.h>
 #include "parser.h"
+#include <sstream>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-
-#include "linmath.h"
 
 //////-------- Global Variables -------/////////
 GLuint gpuVertexBuffer;
 GLuint gpuNormalBuffer;
 GLuint gpuIndexBuffer;
-
+char gRendererInfo[512] = { 0 };
+char gWindowTitle[512] = { 0 };
 // never free a pointer that GL library returns 
 // they are automatically handled 
 
@@ -46,6 +50,7 @@ void cameraInit()
     /* Set projection frustrum */
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
+    // gluPerspective((GLdouble) 30, (GLdouble) (camera.near_plane.y - camera.near_plane.x) / (camera.near_plane.w - camera.near_plane.z), (GLdouble) camera.near_distance, (GLdouble) camera.far_distance);
     glFrustum(camera.near_plane.x, camera.near_plane.y, camera.near_plane.z, camera.near_plane.w, 
     camera.near_distance, camera.far_distance);
 }
@@ -141,11 +146,24 @@ void calculateNormals()
             normals[face.v2_id-1].z += normal2.z;
         }
     }
+//     for(int i = 0; i<vSize; i++)
+//     {
+//         float len = sqrtf(normals[i].x*normals[i].x+ normals[i].y*normals[i].y + normals[i].z + normals[i].z);
+//         normals[i].x /= len;
+//         normals[i].y /= len;
+//         normals[i].z /= len;
+//     }
 }
 
 void drawMeshes()
 {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    static int framesRendered = 0;
+	static std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
+
+    glClearColor(0, 0, 0, 1);
+	glClearDepth(1.0f);
+	glClearStencil(0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glShadeModel(GL_SMOOTH);
     glMatrixMode(GL_MODELVIEW);
     glEnable(GL_NORMALIZE);
@@ -190,14 +208,50 @@ void drawMeshes()
         for(int j = 0; j<fSize; j++)
         {
             // polygon mode
-            if(mesh.mesh_type == "Solid")
+            if(scene.culling_enabled)
             {
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                glEnable(GL_CULL_FACE);
+                glFrontFace(GL_CCW);
+                if(scene.culling_face)
+                {
+                    glCullFace(GL_FRONT);
+                    if(mesh.mesh_type == "Solid")
+                    {
+                        glPolygonMode(GL_BACK, GL_FILL);
+                    }
+                    else if(mesh.mesh_type == "Wireframe")
+                    {
+                        glPolygonMode(GL_BACK, GL_LINE);
+                    }
+                }
+                else if(!scene.culling_face)
+                {
+                    glCullFace(GL_BACK);
+                    glFrontFace(GL_CCW);
+                    if(mesh.mesh_type == "Solid")
+                    {
+                        glPolygonMode(GL_FRONT, GL_FILL);
+                    }
+                    else if(mesh.mesh_type == "Wireframe")
+                    {
+                        glPolygonMode(GL_FRONT, GL_LINE);
+                    }
+                }
             }
-            else if(mesh.mesh_type == "Wireframe")
+            else if(!scene.culling_enabled)
             {
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                glDisable(GL_CULL_FACE);
+                glFrontFace(GL_CCW);
+                if(mesh.mesh_type == "Solid")
+                {
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                }
+                else if(mesh.mesh_type == "Wireframe")
+                {
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                }
             }
+
 
             // material colors
             glMaterialfv(GL_FRONT, GL_AMBIENT, ambientColor);
@@ -238,9 +292,27 @@ void drawMeshes()
 
             glEnd();
         }
-
         glPopMatrix();
     }
+     ++framesRendered;
+
+	std::chrono::time_point<std::chrono::system_clock> end = std::chrono::system_clock::now();
+
+	std::chrono::duration<double> elapsedTime = end - start;
+	if (elapsedTime.count() > 1.)
+	{
+		start = std::chrono::system_clock::now();
+
+		std::stringstream stream;
+		stream << (framesRendered/(float) 60);
+		framesRendered = 0;
+        
+		strcpy(gWindowTitle, gRendererInfo);
+		strcat(gWindowTitle, stream.str().c_str());
+		strcat(gWindowTitle, " FPS]");
+
+		glfwSetWindowTitle(win, gWindowTitle);
+	}
 }
 
 int main(int argc, char* argv[]) {
@@ -251,7 +323,7 @@ int main(int argc, char* argv[]) {
     scene.camera.gaze.x /= len;
     scene.camera.gaze.y /= len;
     scene.camera.gaze.z /= len;
-
+    std::cout << "OpenGL version: " << glGetString(GL_RENDERER) << " " << glGetString(GL_VERSION)<< std::endl;
     glfwSetErrorCallback(errorCallback);
     if (!glfwInit()) {
         std::cout << "Failed to initialize GLFW\n" << std::endl;
@@ -280,7 +352,10 @@ int main(int argc, char* argv[]) {
 
     glfwSetKeyCallback(win, keyCallback);
     glClearColor(scene.background_color.x, scene.background_color.y, scene.background_color.z, 1);
-    
+    strcpy(gRendererInfo, "CENG477 - HW3[");
+
+    glfwSetWindowTitle(win, gRendererInfo);
+
     glEnable(GL_LIGHTING);
     glShadeModel(GL_SMOOTH);
     glEnable(GL_DEPTH_TEST);
@@ -300,7 +375,6 @@ int main(int argc, char* argv[]) {
     }
     // instead of waitEvents use pollEvents
     while(!glfwWindowShouldClose(win)) {
-        
         cameraInit();
         turnOn();
         drawMeshes();
