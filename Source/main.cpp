@@ -164,10 +164,10 @@ void drawMeshes()
 	glClearDepth(1.0f);
 	glClearStencil(0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
     glShadeModel(GL_SMOOTH);
     glMatrixMode(GL_MODELVIEW);
     glEnable(GL_NORMALIZE);
-
     int mSize = scene.meshes.size();
     for(int i = 0; i<mSize; i++)
     {
@@ -323,7 +323,6 @@ int main(int argc, char* argv[]) {
     scene.camera.gaze.x /= len;
     scene.camera.gaze.y /= len;
     scene.camera.gaze.z /= len;
-    std::cout << "OpenGL version: " << glGetString(GL_RENDERER) << " " << glGetString(GL_VERSION)<< std::endl;
     glfwSetErrorCallback(errorCallback);
     if (!glfwInit()) {
         std::cout << "Failed to initialize GLFW\n" << std::endl;
@@ -359,6 +358,7 @@ int main(int argc, char* argv[]) {
     glEnable(GL_LIGHTING);
     glShadeModel(GL_SMOOTH);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH);
 
     // initialize camera and scene
 
@@ -374,9 +374,9 @@ int main(int argc, char* argv[]) {
         glEnable(GL_LIGHT0+i);
     }
     // instead of waitEvents use pollEvents
+    turnOn();
     while(!glfwWindowShouldClose(win)) {
         cameraInit();
-        turnOn();
         drawMeshes();
         glfwSwapBuffers(win);
         glfwPollEvents();
