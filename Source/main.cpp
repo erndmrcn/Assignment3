@@ -4,6 +4,7 @@
 #include "parser.h"
 #include <sstream>
 #include <cstdio>
+#include <iomanip>
 #include <cstdlib>
 #include <cstring>
 #include <GL/glew.h>
@@ -15,6 +16,7 @@ GLuint gpuNormalBuffer;
 GLuint gpuIndexBuffer;
 char gRendererInfo[512] = { 0 };
 char gWindowTitle[512] = { 0 };
+static bool fulscreen = 0;
 // never free a pointer that GL library returns 
 // they are automatically handled 
 
@@ -29,8 +31,23 @@ static void errorCallback(int error, const char* description) {
 }
 
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    GLFWmonitor * _monitor = glfwGetPrimaryMonitor();
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
+    
+    // if (key == GLFW_KEY_F && action == GLFW_PRESS)
+    // {
+    //     fulscreen = 1;   
+    //     const GLFWvidmode * mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    //     //glfwSetWindowSize(win, mode->width, mode->height);
+    //     glfwMaximizeWindow(win);
+
+    // }
+    // if (key == GLFW_KEY_E && action == GLFW_PRESS)
+    // {
+    //     fulscreen = 0;
+    //     glfwSetWindowSize(win, scene.camera.image_width, scene.camera.image_height);
+    // }
 }
 
 void cameraInit()
@@ -294,20 +311,21 @@ void drawMeshes()
         }
         glPopMatrix();
     }
-     ++framesRendered;
+    ++framesRendered;
 
 	std::chrono::time_point<std::chrono::system_clock> end = std::chrono::system_clock::now();
 
 	std::chrono::duration<double> elapsedTime = end - start;
-	if (elapsedTime.count() > 1.)
+	if (elapsedTime.count() >= 1.)
 	{
 		start = std::chrono::system_clock::now();
 
 		std::stringstream stream;
-		stream << (framesRendered/(float) 60);
+		stream << std::setprecision(3)<<(framesRendered/elapsedTime.count());
 		framesRendered = 0;
         
 		strcpy(gWindowTitle, gRendererInfo);
+		strcat(gWindowTitle, "[");
 		strcat(gWindowTitle, stream.str().c_str());
 		strcat(gWindowTitle, " FPS]");
 
@@ -351,7 +369,7 @@ int main(int argc, char* argv[]) {
 
     glfwSetKeyCallback(win, keyCallback);
     glClearColor(scene.background_color.x, scene.background_color.y, scene.background_color.z, 1);
-    strcpy(gRendererInfo, "CENG477 - HW3[");
+    strcpy(gRendererInfo, "CENG477 - HW3");
 
     glfwSetWindowTitle(win, gRendererInfo);
 
